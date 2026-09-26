@@ -1,0 +1,21 @@
+.DS_Store
+.vscode/
+.axerc
+
+# Xcode / Swift local output
+App/.build/
+App/.swiftpm/
+App/DerivedData/
+App/**/*.xcuserstate
+App/**/xcuserdata/
+*.xcuserstate
+
+# Web deployment output (regenerate with Web/build.py)
+Web/dist/
+Web/cycle-timer-pages.zip
+
+# Local secrets and temporary files
+.env
+.env.*
+*.log
+*.tmp

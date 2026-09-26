@@ -1,0 +1,190 @@
+const listeners = {};
+const root = { innerHTML: '', addEventListener(name, callback) { listeners[name] = callback; } };
+let audiblePlays = 0;
+const audio = { volume: 1, currentTime: 0, play: () => {
+  if (audio.volume > 0) audiblePlays++;
+  return Promise.resolve();
+}, pause() {} };
+const storage = new Map();
+let interval;
+let now = 1_000_000;
+Date.now = () => now;
+globalThis.document = {
+  getElementById(id) { return id === 'app' ? root : audio; },
+  addEventListener() {}, querySelector() { return null; }, visibilityState: 'hidden'
+};
+globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key,value) => storage.set(key,value) };
+globalThis.navigator = { audioSession: { type: 'ambient' } };
+globalThis.confirm = () => true;
+globalThis.location = { protocol: 'file:' };
+globalThis.window = { scrollTo() {} };
+globalThis.setInterval = callback => { interval = callback; return 1; };
+globalThis.setTimeout = callback => { callback(); return 1; };
+await import('./app.js');
+function click(action, extra = {}) {
+  listeners.click({ target: { closest() { return { dataset: { action, ...extra } }; } } });
+}
+function contains(value) { if (!root.innerHTML.includes(value)) throw Error(`Missing ${value}`); }
+contains('循环计时');
+click('quick-single');
+contains('单次时长');
+contains('class="duration-wheel"');
+contains('value="1" aria-label="重复"');
+const secondsWheel = {
+  dataset: { duration: 'route.singleSeconds', part: '2', value: '0' },
+  scrollTop: 5 * 42,
+  matches: selector => selector === '.duration-wheel',
+  querySelector: () => null,
+  parentElement: { querySelector: () => null }
+};
+listeners.scroll({ target: secondsWheel });
+if (secondsWheel.dataset.value !== '5') throw Error('Wheel did not track a continuous scroll');
+listeners.change({target:{dataset:{bind:'route.singleRepeats',number:'count'},value:'1',type:'text',matches:()=>true}});
+contains('00:05');
+click('back');
+click('quick-multi');
+contains('整套循环');
+contains('value="1" aria-label="整套循环"');
+if (root.innerHTML.includes('data-action="remove-quick-step"')) throw Error('Step menu still deletes directly');
+click('step-menu',{path:'route.steps.0'});
+for (const item of ['复制步骤','上移','下移','删除']) contains(item);
+contains('data-operation="up" disabled');
+click('step-option',{path:'route.steps.0',operation:'copy'});
+contains('3 / 8');
+click('step-menu',{path:'route.steps.1'});
+click('step-option',{path:'route.steps.1',operation:'down'});
+const movedNames = [...root.innerHTML.matchAll(/data-bind="route\.steps\.\d+\.name" value="([^"]+)"/g)].map(match => match[1]);
+if (movedNames.join(',') !== '步骤 1,步骤 2,步骤 1') throw Error(`Step reorder failed: ${movedNames}`);
+click('step-menu',{path:'route.steps.2'});
+click('step-option',{path:'route.steps.2',operation:'delete'});
+contains('2 / 8');
+click('back');
+click('new-project');
+contains('步骤配置');
+contains('class="card editor-total"');
+contains('00:00');
+if (root.innerHTML.includes('class="card editor-group"')) throw Error('Empty group card should be hidden');
+click('add-editor-step');
+contains('持续时间');
+contains('class="card editor-group"');
+contains('1 / 24');
+contains('class="add-group-link"');
+click('step-menu',{path:'route.draft.groups.0.steps.0'});
+contains('data-operation="delete" disabled');
+click('step-option',{path:'route.draft.groups.0.steps.0',operation:'copy'});
+contains('2 / 24');
+if (root.innerHTML.includes('添加计时步骤') || root.innerHTML.includes('添加休息步骤')) throw Error('Extra add-step choices should be absent');
+click('back');
+click('quick-single');
+listeners.change({target:{dataset:{bind:'route.singleSeconds',number:'duration',part:'2'},value:'5',type:'text',matches:()=>true}});
+contains('00:05');
+click('start-quick');
+contains('准备开始');
+if (navigator.audioSession.type !== 'playback') throw Error('iPhone playback audio session was not selected');
+now += 3000; interval();
+contains('计时中');
+const runningMarkup = root.innerHTML;
+now += 100; interval();
+if (root.innerHTML !== runningMarkup) throw Error('Timer rebuilt its buttons during an ordinary tick');
+click('display-mode');
+contains('visual-digits');
+click('pause');
+contains('已暂停');
+click('resume');
+contains('计时中');
+now += 5000; interval();
+contains('任务达成！');
+contains('assets/complete.png');
+click('restart');
+now += 3000; interval();
+now += 2000;
+click('end-early');
+contains('本次已结束');
+contains('assets/ended.png');
+contains('ended-result');
+click('close-result');
+click('tab-history');
+contains('class="check early"');
+click('tab-home');
+click('quick-single');
+listeners.change({target:{dataset:{bind:'route.singleSeconds',number:'duration',part:'2'},value:'5',type:'text',matches:()=>true}});
+listeners.change({target:{dataset:{bind:'route.singleRepeats',number:'count'},value:'2',type:'text',matches:()=>true}});
+click('start-quick');
+await Promise.resolve();
+now += 3000; interval();
+document.visibilityState = 'visible';
+contains('class="next-label"');
+contains('class="running-content"');
+if (root.innerHTML.includes('↪') || root.innerHTML.includes('锁屏后网页版')) throw Error('Timer layout still has old web-only elements');
+now += 5000; interval();
+if (audiblePlays !== 1) throw Error(`Expected one audible step cue, got ${audiblePlays}`);
+now += 250; interval();
+if (audiblePlays !== 1) throw Error('Step cue repeated within one segment');
+document.visibilityState = 'hidden';
+now += 4750; interval();
+contains('任务达成！');
+click('close-result');
+click('home-menu');
+contains('查看归档');
+click('show-archive');
+contains('归档项目');
+click('back');
+click('new-project');
+click('add-editor-step');
+listeners.change({target:{dataset:{bind:'route.draft.title'},value:'拉伸 副本',type:'text',matches:()=>true}});
+listeners.change({target:{dataset:{bind:'route.draft.groups.0.steps.0.durationSeconds',number:'duration',part:'2'},value:'5',type:'text',matches:()=>true}});
+click('save-project');
+click('project-menu',{index:'0'});
+contains('class="menu-popover project-popover"');
+for (const item of ['查看详情','编辑','复制','归档']) contains(item);
+click('view-project',{index:'0'});
+click('flow');
+contains('完整执行顺序');
+contains('第 1 套 · 第 1 组 · 第 1 遍');
+if (root.innerHTML.includes('总时长') || root.innerHTML.includes('计时段')) throw Error('Flow page should contain only execution steps');
+click('back');
+click('back');
+const scheduledStarts = [];
+window.AudioContext = class {
+  constructor() { this.currentTime = 50; this.state = 'running'; this.destination = {}; }
+  resume() { return Promise.resolve(); }
+  decodeAudioData() { return Promise.resolve({}); }
+  createBufferSource() { return { connect() {}, start(at) { scheduledStarts.push(at); }, stop() {} }; }
+};
+globalThis.fetch = () => Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) });
+document.createElement = () => ({ style: { setProperty() {} }, append() {}, remove() {} });
+document.body = { append() {} };
+globalThis.innerWidth = 390;
+globalThis.innerHeight = 844;
+document.visibilityState = 'visible';
+click('quick-single');
+listeners.change({target:{dataset:{bind:'route.singleSeconds',number:'duration',part:'2'},value:'2',type:'text',matches:()=>true}});
+click('start-quick');
+for (let i = 0; i < 20; i++) await Promise.resolve();
+now += 3000; interval();
+if (scheduledStarts.length !== 1 || scheduledStarts[0] !== 52) throw Error(`Final cue schedule mismatch: ${scheduledStarts.join(',')}`);
+now += 2000; interval();
+contains('任务达成！');
+if (scheduledStarts.length !== 1) throw Error('Final cue was scheduled twice');
+click('close-result');
+click('quick-single');
+listeners.change({target:{dataset:{bind:'route.singleSeconds',number:'duration',part:'2'},value:'5',type:'text',matches:()=>true}});
+click('start-quick');
+now += 3000; interval();
+click('timer-home');
+contains('class="active-swipe"');
+contains('class="resume-button"');
+const opened = new Set();
+const front = {style:{},classList:{toggle(name,yes){if(yes)opened.add(name);else opened.delete(name);}}};
+listeners.pointerdown({target:{closest: selector => selector === '.swipe-front' ? front : null},pointerId:1,clientX:250,clientY:500});
+listeners.pointermove({pointerId:1,clientX:150,clientY:502,preventDefault(){}});
+listeners.pointerup({pointerId:1,clientX:150,clientY:502});
+if (!opened.has('open')) throw Error('Swipe did not reveal the remove action');
+click('discard-active');
+if (root.innerHTML.includes('class="active-swipe"')) throw Error('Swipe remove did not discard the active session');
+click('tab-settings');
+contains('试听提示音');
+const beforePreview = scheduledStarts.length;
+click('test-sound');
+if (scheduledStarts.length !== beforePreview + 1) throw Error('Sound preview did not play');
+print('UI smoke tests passed');

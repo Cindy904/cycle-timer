@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "循环计时",
+  "short_name": "循环计时",
+  "description": "单步骤重复、多步骤循环与本地计时记录",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fffcf8",
+  "theme_color": "#fffcf8",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "./assets/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
