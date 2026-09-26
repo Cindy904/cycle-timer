@@ -6,7 +6,7 @@
 
 项目包含 **SwiftUI iPhone App** 和 **可添加到手机主屏幕的 PWA 网页版**。两套界面分别实现，使用相同的产品设计与计时规则。
 
-[在线体验网页版](https://broken-bread-3760.cindywang904.workers.dev/)
+[在线体验网页版](https://throbbing-block-61ba.cindywang904.workers.dev/)
 
 <p align="center">
   <img src="App/CurrentPreview.png" alt="项目首页" width="235">
